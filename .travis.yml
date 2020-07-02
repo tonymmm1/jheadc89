@@ -19,8 +19,6 @@ matrix:
     - name: "Windows build Visual Studio"
       os: windows
       arch: amd64
-      install:
-        - choco install golang -y
       scripts:
         - mkdir build
         - cd build
