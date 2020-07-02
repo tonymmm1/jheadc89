@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/tonymmm1/jheadc89.svg?branch=master)](https://travis-ci.org/tonymmm1/jheadc89)
+
 # jheadc89
 ## Version 3.04
 
