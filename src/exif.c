@@ -840,6 +840,7 @@ static void ProcessExifDir(unsigned char * DirStart, unsigned char * OffsetBase,
 
             case TAG_EXIF_OFFSET:
                 if (ShowTags) printf("%s    Exif Dir:",IndentString);
+		break;
 
             case TAG_INTEROP_OFFSET:
                 if (Tag == TAG_INTEROP_OFFSET && ShowTags) printf("%s    Interop Dir:",IndentString);

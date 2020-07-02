@@ -16,7 +16,6 @@
 #endif
 
 #include "jhead.h"
-
 #include <sys/stat.h>
 
 #define JHEAD_VERSION "3.04"
@@ -677,7 +676,7 @@ static void DoFileRenaming(const char * FileName)
             NameExtra[0] = 0;
         }
 
-        snprintf(NewName, sizeof(NewName), "%s%s.jpg", NewBaseName, NameExtra);
+        sprintf("%s",NewName, sizeof(NewName), "%s%s.jpg", NewBaseName, NameExtra);
 
         if (!strcmp(FileName, NewName)) break; /* Skip if its already this name. */
 

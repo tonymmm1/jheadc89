@@ -148,7 +148,7 @@ void ProcessGpsInfo(unsigned char * DirStart, unsigned char * OffsetBase, unsign
                     Values[a] = ConvertAnyFormat(ValuePtr+a*ComponentSize, Format);
                 }
 
-                snprintf(TempString, sizeof(TempString), FmtString, Values[0], Values[1], Values[2]);
+                sprintf("%s",TempString, sizeof(TempString), FmtString, Values[0], Values[1], Values[2]);
 
                 if (Tag == TAG_GPS_LAT){
                     strncpy(ImageInfo.GpsLat+2, TempString, 29);
@@ -162,7 +162,7 @@ void ProcessGpsInfo(unsigned char * DirStart, unsigned char * OffsetBase, unsign
                 break;
 
             case TAG_GPS_ALT:
-                snprintf(ImageInfo.GpsAlt+1, sizeof(ImageInfo.GpsAlt)-1,
+                sprintf("%s",ImageInfo.GpsAlt+1, sizeof(ImageInfo.GpsAlt)-1,
                     "%.2fm", ConvertAnyFormat(ValuePtr, Format));
                 break;
         }
