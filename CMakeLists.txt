@@ -3,11 +3,13 @@ cmake_minimum_required(VERSION 3.12)
 project(jheadc89 C)
 
 set(CMAKE_C_STANDARD 90)
-#set(CMAKE_BINARY_DIR ${CMAKE_CURRENT_LIST_DIR}/bin)
+set(CMAKE_EXE_LINKER_FLAGS "-lm")
 
 if (WIN32 AND BUILD_SHARED_LIBS)
 	set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
+
+include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include) 
 
 set(${PROJECT_NAME}_SOURCES
 	${CMAKE_CURRENT_LIST_DIR}/include/jhead.h
@@ -21,11 +23,9 @@ set(${PROJECT_NAME}_SOURCES
 
 add_library(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
 
-include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
-
 add_executable(jhead
 	${CMAKE_CURRENT_LIST_DIR}/src/jhead.c
-	${${CMAKE_CURRENT_LIST_DIR}_SOURCES}
+	${${PROJECT_NAME}_SOURCES}
 	)
 
-target_link_libraries(jhead PUBLIC ${PROJECT_NAME})
+target_link_libraries(jhead ${PROJECT_NAME})
