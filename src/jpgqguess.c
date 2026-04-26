@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------- */
-/* Program to pull the information out of various types of EXIF digital  */
+/* Program to pull the information out of various types of EXIF digital */
 /* camera files and show it in a reasonably consistent way */
 /* */
 /* This module handles guessing of jpeg quality from quantization table */
@@ -84,10 +84,11 @@ void process_DQT (const uchar * Data, int length)
     int *reftable = NULL;
     double cumsf = 0.0, cumsf2 = 0.0;
     int allones = 1;
-    
+
     a=2; /* first two bytes is length */
-    while (a<length)
+    while (a+3<length)
     {
+        if (a+1+64 > length) goto tooshort;
         c = Data[a++];
         tableindex = c & 0x0f;
         if (ShowTags>1){
@@ -96,16 +97,16 @@ void process_DQT (const uchar * Data, int length)
         if (tableindex < 2){
             reftable = deftabs[tableindex];
         }
-
-        /* Read in the table, compute statistics relative to reference table  */
-        if (a+64 > length) {
+        /* Read in the table, compute statistics relative to reference table */
+        if (c>>4 && a+128 > length) {
+tooshort:
             ErrNonfatal("DQT section too short",0,0);
             return;
         }
         for (coefindex = 0; coefindex < 64; coefindex++) {
             unsigned int val;
             if (c>>4) {
-                register unsigned int temp;
+                unsigned int temp;
                 temp=(unsigned int) (Data[a++]);
                 temp *= 256;
                 val=(unsigned int) Data[a++] + temp;
@@ -115,7 +116,7 @@ void process_DQT (const uchar * Data, int length)
             table[coefindex] = val;
             if (reftable) {
                 double x;
-                /* scaling factor in percent  */
+                /* scaling factor in percent */
                 x = 100.0 * (double)val / (double)reftable[coefindex];
                 cumsf += x;
                 cumsf2 += x * x;
@@ -123,7 +124,7 @@ void process_DQT (const uchar * Data, int length)
                 if (val != 1) allones = 0;
             }
         }
-        /* If requested, print table in normal array order  */
+        /* If requested, print table in normal array order */
         if (ShowTags>2){
             for (row=0; row<8; row++) {
                 printf("    ");
@@ -133,13 +134,13 @@ void process_DQT (const uchar * Data, int length)
                 printf("\n");
             }
         }
-        /* Print summary stats  */
-        if (reftable) { /* terse output includes quality  */
+        /* Print summary stats */
+        if (reftable) { /* terse output includes quality */
             double qual, var;
-            cumsf /= 64.0;    /* mean scale factor  */
+            cumsf /= 64.0;    /* mean scale factor */
             cumsf2 /= 64.0;
-            var = cumsf2 - (cumsf * cumsf); /* variance  */
-            if (allones){      /* special case for all-ones table  */
+            var = cumsf2 - (cumsf * cumsf); /* variance */
+            if (allones){      /* special case for all-ones table */
                 qual = 100.0;
             }else if (cumsf <= 100.0){
                 qual = (200.0 - cumsf) / 2.0;
@@ -153,7 +154,7 @@ void process_DQT (const uchar * Data, int length)
                      tableindex, qual, cumsf, var);
             }
             if (tableindex == 0){
-                ImageInfo.QualityGuess = (int)(qual+0.5);
+                ImageInfo.JpgQualityGuess = (int)(qual+0.5);
             }
         }
     }
@@ -175,6 +176,7 @@ void process_DHT (const uchar * Data, int length)
     if (ShowTags>1){
         printf("DHT (length %d bytes)\n", length);
     }
+    if (length < 19) goto tooshort;
 
     a=2; /* first two bytes is length */
     while (a<length)
@@ -210,5 +212,3 @@ void process_DHT (const uchar * Data, int length)
         }
     }
 }
-
-

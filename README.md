@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.org/tonymmm1/jheadc89.svg?branch=master)](https://travis-ci.org/tonymmm1/jheadc89)
 
 # jheadc89
-## Version 3.04
+## Version 3.3
 
 [Exif Jpeg header manipulation tool](https://www.sentex.ca/~mwandel/jhead/) by Matthias Wandels 
 

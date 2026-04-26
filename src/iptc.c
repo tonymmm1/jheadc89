@@ -70,30 +70,29 @@ void show_IPTC (unsigned char* Data, unsigned int itemlen)
     pos += sizeof(IptcSig2)-1;          /* move data pointer to the next field */
 
 
-	while (memcmp(pos, IptcSig3, sizeof(IptcSig3)) != 0) { /* loop on valid Photoshop blocks */
+    while (memcmp(pos, IptcSig3, sizeof(IptcSig3)) != 0) { /* loop on valid Photoshop blocks */
+        pos += sizeof(IptcSig3); /* move data pointer to the Header Length */
+        /* Skip header */
+        headerLen = *pos; /* get header length and move data pointer to the next field */
+        pos += (headerLen & 0xfe) + 2; /* move data pointer to the next field (Header is padded to even length, counting the length byte) */
+        if (pos+16 > maxpos) goto corrupt;
+        pos += 3; /* move data pointer to length, assume only one byte, TODO: use all 4 bytes */
+        dataLen = *pos++;
+        pos += dataLen; /* skip data section */
+        if (pos+16 > maxpos) goto corrupt;
 
-		pos += sizeof(IptcSig3); /* move data pointer to the Header Length */
-		/* Skip header */
-		headerLen = *pos; /* get header length and move data pointer to the next field */
-		pos += (headerLen & 0xfe) + 2; /* move data pointer to the next field (Header is padded to even length, counting the length byte) */
-
-		pos += 3; /* move data pointer to length, assume only one byte, TODO: use all 4 bytes */
-
-		dataLen = *pos++;
-		pos += dataLen; /* skip data section */
-
-		if (memcmp(pos, IptcSig2, sizeof(IptcSig2) - 1) != 0) {
-			badsig: if (ShowTags) {
-				ErrNonfatal("IPTC type signature mismatch\n", 0, 0);
-			}
-			return;
-		}
-		pos += sizeof(IptcSig2) - 1; /* move data pointer to the next field */
+        if (memcmp(pos, IptcSig2, sizeof(IptcSig2) - 1) != 0) {
+            badsig: if (ShowTags) {
+                ErrNonfatal("IPTC type signature mismatch\n", 0, 0);
+            }
+            return;
+        }
+        pos += sizeof(IptcSig2) - 1; /* move data pointer to the next field */
     }
 
-    pos += sizeof(IptcSig3);          /* move data pointer to the next field */
+    pos += sizeof(IptcSig3);         /* move data pointer to the next field */
 
-    if (pos >= maxpos) goto corrupt;
+    if (pos+16 >= maxpos) goto corrupt;
 
     /* IPTC section found */
 
@@ -101,7 +100,7 @@ void show_IPTC (unsigned char* Data, unsigned int itemlen)
     headerLen = *pos++;                     /* get header length and move data pointer to the next field */
     pos += headerLen + 1 - (headerLen % 2); /* move data pointer to the next field (Header is padded to even length, counting the length byte) */
 
-    if (pos+4 >= maxpos) goto corrupt;
+    if (pos+8 >= maxpos) goto corrupt;
 
     /* Get length (from motorola format) */
     /*length = (*pos << 24) | (*(pos+1) << 16) | (*(pos+2) << 8) | *(pos+3); */
@@ -111,7 +110,7 @@ void show_IPTC (unsigned char* Data, unsigned int itemlen)
     printf("======= IPTC data: =======\n");
 
     /* Now read IPTC data */
-    while (pos < (Data + itemlen-5)) {
+    while (pos+5 < maxpos) {
         short  signature;
         unsigned char   type = 0;
         short  length = 0;
@@ -172,7 +171,7 @@ void show_IPTC (unsigned char* Data, unsigned int itemlen)
             memset(TempBuf, 0, sizeof(TempBuf));
             memset(TempBuf, ' ', 14);
             memcpy(TempBuf, description, strlen(description));
-            strcat(TempBuf, ":"); 
+            strcat(TempBuf, ":");
             printf("%s %*.*s\n", TempBuf, length, length, pos);
         }
         pos += length;
@@ -187,19 +186,16 @@ corrupt:
 /*-------------------------------------------------------------------------- */
 /* Dump contents of XMP section */
 /*-------------------------------------------------------------------------- */
-void ShowXmp(Section_t XmpSection)
+void ShowXmp(unsigned char * Data, int Length)
 {
-    unsigned char * Data;
     char OutLine[101];
     int OutLineChars;
     int NonBlank;
-    unsigned a;
+    int a;
     NonBlank = 0;
-    Data = XmpSection.Data;
     OutLineChars = 0;
 
-
-    for (a=0;a<XmpSection.Size;a++){
+    for (a=0;a<Length;a++){
         if (Data[a] >= 32 && Data[a] < 128){
             OutLine[OutLineChars++] = Data[a];
             if (Data[a] != ' ') NonBlank |= 1;

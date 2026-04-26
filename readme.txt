@@ -1,22 +1,29 @@
+JHEAD is a simple command line tool for displaying and some manipulation
+of EXIF header data embedded in Jpeg images from digital cameras.
+
+Jhead is part of the online repository of many linux distribution, 
+you can install the package using "apt install jhead"
+
+For command line options, please see usage.html
 
 Some notes:
 
     When I first wrote Jhead back in 1999, there wasn't much software around
-    for looking inside Exif headers, so I wrote jhead for that task.  Since 
-    then, a lot of much more sophisticated programs for looking inside Exif 
+    for looking inside Exif headers, so I wrote jhead for that task.  Since
+    then, a lot of much more sophisticated programs for looking inside Exif
     headers have been written, many with GUIs, and features that Jhead lacks.
 
-    Seeing that Jhead does everything I need it to do, My goal is not to have 
-    every feature imaginable.  Rather, I want Jhead to be a small, simple, 
-    easy to understand program.  My goal is that if you need to understand 
-    Exif internals, or add Exif capability to your program, Jhead is the 
+    Seeing that Jhead does everything I need it to do, My goal is not to have
+    every feature imaginable.  Rather, I want Jhead to be a small, simple,
+    easy to understand program.  My goal is that if you need to understand
+    Exif internals, or add Exif capability to your program, Jhead is the
     place to cut and paste code from.
 
-    As a result, Jhead may not have your pet feature.  Feel free to add your
-    pet feature to Jhead - its meant to be hacked.  If you send me your 
-    changes, I might integrate it, but only if its simple.  
-    
-    If you find that it dies on a certain jpeg file, send it to me, and I 
+    If jhead doesn't have a feature you want, look for "exiv2" or "exiftool".
+    Exiftool has any feature you could imagine, but it's also 100x bigger and
+    much slower (perl inside).  exiv2 is much faster and not quite as big.
+
+    If you find that it dies on a certain jpeg file, send it to me, and I
     will look at it.
 
 
@@ -24,37 +31,32 @@ Compiling:
 
     Windows:
 
-    Make sure visual C is on your path (I use version 6 from 1998, 
-    but it shouldn't matter much).
+    Make sure visual C compiler is on your path.  I use Microsoft visual
+    C from 2022
     Run the batch file make.bat
 
-    Linux & Unices:
+    Linux:
 
     type 'make'.
+
+	There is also a suite of regression tests in the "tests" directory.
+	After compiling, from the tests directory run "runtests"
+	To check the results, do "diff expected-txt results-txt"
 
 Portability:
 
     Although I have never done so myself, people tell me it compiles
     under platforms as diverse as such as Mac OS-X, or NetBSD on Mac68k.
-    Jhead doesn't care about the endian-ness of your CPU, and should not
-    have problems with processors that do not handle unaligned data,
-    such as ARM or Alpha.  The main portability problem is the use 
-    of C++ style '//' comments.  This is intentional, and won't change.
+    Jhead doesn't care about the endian-ness of your CPU.
 
     Jhead has also made its way into various Linux distributions and ports
     trees, so you might already have it on your system without knowing.
-    Note that I am a windows weenie myself.   
 
 License:
 
     Jhead is public domain software - that is, you can do whatever you want
-    with it, and include it software that is licensed under the GNU or the 
-    BSD license, or whatever other licence you chose, including proprietary
-    closed source licenses.  Although not part of the license, I do expect
-    common courtesy, please.
-
-    If you do integrate the code into some software of yours, I'd appreciate
-    knowing about it though. 
+    with it, and include it software that is licensed under the GNU or the
+    BSD license, or whatever other license you chose, including proprietary
+    closed source licenses. 
 
 Matthias Wandel
-

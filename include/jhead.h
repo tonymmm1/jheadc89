@@ -1,11 +1,11 @@
-/*--------------------------------------------------------------------------
- Include file for jhead program.
-
- This include file only defines stuff that goes across modules.  
- I like to keep the definitions for macros and structures as close to 
- where they get used as possible, so include files only get stuff that 
- gets used in more than one file.
---------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------- */
+/* Include file for jhead program. */
+/* */
+/* This include file only defines stuff that goes across modules. */
+/* I like to keep the definitions for macros and structures as close to */
+/* where they get used as possible, so include files only get stuff that */
+/* gets used in more than one file. */
+/*-------------------------------------------------------------------------- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,18 +13,18 @@
 #include <errno.h>
 #include <ctype.h>
 
-/*--------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------- */
 
 #ifdef _WIN32
     #include <sys/utime.h>
 
-    /* Make the Microsoft Visual c 10 deprecate warnings go away.
-       The _CRT_SECURE_NO_DEPRECATE doesn't do the trick like it should.*/
+    /* Make the Microsoft Visual c 10 deprecate warnings go away. */
+    /* The _CRT_SECURE_NO_DEPRECATE doesn't do the trick like it should. */
     #define unlink _unlink
     #define chmod _chmod
     #define access _access
     #define mktemp _mktemp
-    
+
     #if _MSC_VER && _MSC_VER <= 1500
         /* The 2007 vintage compiler I use on windows doesn't have snprintf */
         #define snprintf(dest, len, format,...) sprintf (dest, format, __VA_ARGS__)
@@ -58,13 +58,13 @@ typedef unsigned char uchar;
 #endif
 
 
-/*--------------------------------------------------------------------------
- This structure is used to store jpeg file sections in memory.*/
+/*-------------------------------------------------------------------------- */
+/* This structure is used to store jpeg file sections in memory. */
 typedef struct {
     uchar *  Data;
     int      Type;
-    unsigned Size;
-}Section_t;
+    int      Size;
+}ImgSect_t;
 
 extern int ExifSectionIndex;
 
@@ -72,18 +72,23 @@ extern int DumpExifMap;
 
 #define MAX_DATE_COPIES 10
 
-/*--------------------------------------------------------------------------
- This structure stores Exif header image elements in a simple manner
- Used to store camera data as extracted from the various ways that it can be
- stored in an exif header*/
+/*-------------------------------------------------------------------------- */
+/* This structure stores Exif header image elements in a simple manner */
+/* Used to store camera data as extracted from the various ways that it can be */
+/* stored in an exif header */
 typedef struct {
     char  FileName     [PATH_MAX+1];
     time_t FileDateTime;
+    int   ImgTypeLoaded;
+        #define IMG_TYPE_UNKNOWN 0
+        #define IMG_TYPE_JPEG    1
+        #define IMG_TYPE_PNG     2
+        #define IMG_TYPE_WEBP    3
 
     struct {
-        /* Info in the jfif header.
-           This info is not used much - jhead used to just replace it with default
-           values, and over 10 years, only two people pointed this out. */
+        /* Info in the jfif header. */
+        /* This info is not used much - jhead used to just replace it with default */
+        /* values, and over 10 years, only two people pointed this out. */
         char  Present;
         char  ResolutionUnits;
         short XDensity;
@@ -120,7 +125,6 @@ typedef struct {
     int   ResolutionUnit;
 
     char  Comments[MAX_COMMENT_SIZE];
-    int   CommentWidthchars; /* If nonzero, widechar comment, indicates number of chars. */
 
     int   ThumbnailOffset;          /* Exif offset to thumbnail */
     int   ThumbnailSize;            /* Size of thumbnail. */
@@ -138,7 +142,8 @@ typedef struct {
     char GpsLong[31];
     char GpsAlt[20];
 
-    int  QualityGuess;
+    int  JpgQualityGuess; /* For jpeg */
+    int  PngNumColors;
 }ImageInfo_t;
 
 
@@ -164,7 +169,7 @@ void FileTimeAsString(char * TimeStr);
 /* Prototypes for exif.c functions. */
 int Exif2tm(struct tm * timeptr, char * ExifTime);
 void Clear_EXIF();
-void process_EXIF (unsigned char * CharBuf, int length);
+int process_EXIF (unsigned char * CharBuf, int length);
 void ShowImageInfo(int ShowFileInfo);
 void ShowConciseImageInfo(void);
 const char * ClearOrientation(void);
@@ -174,14 +179,15 @@ int Get16u(void * Short);
 unsigned Get32u(void * Long);
 int Get32s(void * Long);
 void Put32u(void * Value, unsigned PutValue);
-void create_EXIF(void);
+int CreateMinimalExif(char * Buffer);
+int ExifBytesActuallyUsed(uchar * ExifData, unsigned Size);
 
-/*--------------------------------------------------------------------------
- Exif format descriptor stuff*/
+/*-------------------------------------------------------------------------- */
+/* Exif format descriptor stuff */
 extern const int BytesPerFormat[];
 #define NUM_FORMATS 12
 
-#define FMT_BYTE       1 
+#define FMT_BYTE       1
 #define FMT_STRING     2
 #define FMT_USHORT     3
 #define FMT_ULONG      4
@@ -200,12 +206,12 @@ extern void ProcessMakerNote(unsigned char * DirStart, int ByteCount,
                  unsigned char * OffsetBase, unsigned ExifLength);
 
 /* gpsinfo.c prototypes */
-void ProcessGpsInfo(unsigned char * ValuePtr,  
+void ProcessGpsInfo(unsigned char * ValuePtr,
                 unsigned char * OffsetBase, unsigned ExifLength);
 
-/* iptc.c prototpyes */
+/* iptc.c prototypes */
 void show_IPTC (unsigned char * CharBuf, unsigned int length);
-void ShowXmp(Section_t XmpSection);
+void ShowXmp(unsigned char * Data, int Length);
 
 /* Prototypes for myglob.c module */
 #ifdef _WIN32
@@ -217,19 +223,69 @@ void SlashToNative(char * Path);
 int EnsurePathExists(const char * FileName);
 void CatPath(char * BasePath, const char * FilePath);
 
-/* Prototypes from jpgfile.c */
-int ReadJpegSections (FILE * infile, ReadMode_t ReadMode);
-void DiscardData(void);
-void DiscardAllButExif(void);
-int ReadJpegFile(const char * FileName, ReadMode_t ReadMode);
-int ReplaceThumbnail(const char * ThumbFileName);
-int SaveThumbnail(char * ThumbFileName);
+/* Functions that operate on Jpeg PNG or Webp */
+int  ReadImgFile(const char * FileName, ReadMode_t ReadMode);
+void WriteImgFile(const char * FileName);
+void ResetImgfile(void);
+void DiscardImgData(void);
+int ReplaceImgThumbnail(const char * ThumbFileName);
+int SaveImgThumbnail(char * ThumbFileName);
 int RemoveSectionType(int SectionType);
-int RemoveUnknownSections(void);
+int RemoveMetadataImgSections(void);
+int RemoveImgExif(void);
+int RemoveImgXmp(void);
+void CreateImgExif(void);
+void SetImgCommentTo(char * NewComment);
+uchar * GetImgExifSectionData(unsigned int *Size);
+ImgSect_t * FindImgSection(int SectionType);
+ImgSect_t * CreateImgSection(int SectionType, unsigned char * Data, int size);
+void ProcessImgComment (const uchar * Data, int length);
+int TrimImgExifTrailingZeros(void);
+void DoFileRenaming(const char * FileName, char * strftime_args);
+
+/* Jpeg handling functions */
+int  ReadJpegFile(FILE * f, ReadMode_t ReadMode);
 void WriteJpegFile(const char * FileName);
-Section_t * FindSection(int SectionType);
-Section_t * CreateSection(int SectionType, unsigned char * Data, int size);
-void ResetJpgfile(void);
+void ResetJpegFile(void);
+void DiscardAllJpegSectionsButExif(void);
+void DiscardJpegData(void);
+int RemoveJpegSectionByType(int SectionType);
+int RemoveMetadataJpegSections(void);
+int SaveJpegThumbnail(char * ThumbFileName);
+void SetJpegCommentTo(char * NewComment);
+void CreateMinimalJpegExif(void);
+ImgSect_t * FindJpegSection(int SectionType);
+ImgSect_t * FindJpegExifSection();
+unsigned char * ChangeJpegExifSectionLength(int NewLength);
+ImgSect_t * CreateJpegSection(int SectionType, unsigned char * Data, int size);
+
+/* Png handling functions */
+int  ReadPngFile(FILE * f, ReadMode_t ReadMode);
+void WritePngFile(const char * FileName);
+void ResetPngFile(void);
+void DiscardPngData(void);
+int ReplacePngThumbnail(const char * ThumbFileName);
+int RemovePngSectionByType(int SectionType);
+int RemoveMetadataPngSections(void);
+void SetPngCommentTo(char * NewComment);
+void CreateMinimalPngExif(void);
+unsigned char * ChangePngExifSectionLength(int NewLength);
+ImgSect_t * FindPngSection(int SectionType);
+ImgSect_t * FindPngExifSection();
+ImgSect_t * CreatePngSection(int SectionType, unsigned char * Data, int Size);
+
+/* Webp handling functions */
+int  ReadWebpSections(FILE * f, ReadMode_t ReadMode);
+ImgSect_t * GetWebpSection(int Type);
+void DiscardWebpData(void);
+void ResetWebpFile(void);
+int RemoveWebpSectionByType(int SectionType);
+int RemoveMetadataWebpSections(void);
+void CreateMinimalWebpExif(void);
+void SetWebpCommentTo(char * NewCommentStr);
+void WriteWebpFile(const char * FileName);
+uchar * ChangeWebpExifSectionLength(int NewLength);
+
 
 /* Prototypes from jpgqguess.c */
 void process_DQT (const uchar * Data, int length);
@@ -239,11 +295,11 @@ void process_DHT (const uchar * Data, int length);
 extern ImageInfo_t ImageInfo;
 extern int ShowTags;
 
-/*--------------------------------------------------------------------------
- JPEG markers consist of one or more 0xFF bytes, followed by a marker
- code byte (which is not an FF).  Here are the marker codes of interest
- in this program.  (See jdmarker.c for a more complete list.)
---------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------- */
+/* JPEG markers consist of one or more 0xFF bytes, followed by a marker */
+/* code byte (which is not an FF).  Here are the marker codes of interest */
+/* in this program.  (See jdmarker.c for a more complete list.) */
+/*-------------------------------------------------------------------------- */
 
 #define M_SOF0  0xC0          /* Start Of Frame N */
 #define M_SOF1  0xC1          /* N indicates which compression process */

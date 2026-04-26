@@ -10,7 +10,8 @@ LDFLAGS:=$(shell dpkg-buildflags --get LDFLAGS)
 all: jhead
 
 objs = $(OBJ)/jhead.o $(OBJ)/jpgfile.o $(OBJ)/jpgqguess.o $(OBJ)/paths.o \
-	$(OBJ)/exif.o $(OBJ)/iptc.o $(OBJ)/gpsinfo.o $(OBJ)/makernote.o 
+	$(OBJ)/exif.o $(OBJ)/iptc.o $(OBJ)/gpsinfo.o $(OBJ)/makernote.o \
+	$(OBJ)/pngfile.o $(OBJ)/webpfile.o $(OBJ)/imgfile.o
 
 $(OBJ)/%.o:$(SRC)/%.c
 	${CC} $(CFLAGS) $(CPPFLAGS) -c $< -o $@
