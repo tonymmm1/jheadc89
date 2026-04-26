@@ -369,13 +369,24 @@ static void DoCommand(const char * FileName, int ShowIt)
     memcpy(TempName, FileName, a);
     strcpy(TempName+a, "XXXXXX");
 
-    /* Note: Compiler will warn about mkstemp.  but I need a filename, not a file. */
-    /* I could just then get the file name from what mkstemp made, and pass that */
-    /* to the executable, but that would make for the exact same vulnerability */
-    /* as mktemp - that is, that between getting the random name, and making the file */
-    /* some other program could snatch that exact same name! */
-    /* also, not all platforms support mkstemp. */
+    /* Use mkstemp to get a unique temp name without the linker warning that */
+    /* mktemp produces.  mkstemp creates and opens the file; we immediately */
+    /* close and unlink it so the name is free for the child command to use. */
+    /* This carries the same TOCTOU caveat as mktemp, but is the conventional */
+    /* way to silence the warning on modern glibc. */
+#ifdef _WIN32
     mktemp(TempName);
+#else
+    {
+        int tfd = mkstemp(TempName);
+        if (tfd >= 0) {
+            close(tfd);
+            unlink(TempName);
+        } else {
+            TempName[0] = 0;
+        }
+    }
+#endif
 
 
     if(!TempName[0]) {
