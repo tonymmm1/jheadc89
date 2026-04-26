@@ -164,6 +164,9 @@ static void DoCommand(const char * FileName, int ShowIt)
     char ExecString[PATH_MAX*3];
     char TempName[PATH_MAX+10];
     int TempUsed = FALSE;
+#ifndef _WIN32
+    int fd;
+#endif
 
     e = 0;
 
@@ -177,7 +180,7 @@ static void DoCommand(const char * FileName, int ShowIt)
 #ifdef _WIN32
     mktemp(TempName);
 #else
-    int fd = mkstemp(TempName);
+    fd = mkstemp(TempName);
     if (fd == -1) ErrFatal("Cannot find available temporary file name");
     close(fd);
 #endif
@@ -302,10 +305,10 @@ static int DoAutoRotate(const char * FileName)
 {
     if (ImageInfo.Orientation != 1){
         const char * Argument;
+        char RotateCommand[PATH_MAX*2+50];
         Argument = ClearOrientation();
         if (Argument == NULL) return FALSE; /* orientation tag in image, nothing changed. */
 
-        char RotateCommand[PATH_MAX*2+50];
         if (strlen(Argument) == 0){
             /* Unknown orientation, but still modified. */
             return TRUE; /* Image is still modified. */

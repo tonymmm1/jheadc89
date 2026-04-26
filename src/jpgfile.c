@@ -354,6 +354,7 @@ uchar * ChangeJpegExifSectionLength(int NewLength)
     int i;
     int FirstExifIndex = -1;
     ImgSect_t * s;
+    unsigned TotalSize;
 
     /* Find the first Exif section and remove any duplicates */
     for (i = 0; i < JpgSectionsRead; i++) {
@@ -383,12 +384,13 @@ uchar * ChangeJpegExifSectionLength(int NewLength)
 
     /* Resize the section. */
     /* In JPEGs, the section data starts with 2 bytes for length 6 for the "Exif\0\0" preamble. */
-    unsigned TotalSize = NewLength + 8;
+    TotalSize = NewLength + 8;
     s = &JpgSections[FirstExifIndex];
 
     if (TotalSize > s->Size) {
         /* Grow the buffer */
-        uchar * NewData = (uchar *)realloc(s->Data, TotalSize);
+        uchar * NewData;
+        NewData = (uchar *)realloc(s->Data, TotalSize);
         if (NewData == NULL) ErrFatal("Out of memory reallocating Exif section");
         s->Data = NewData;
     }
@@ -660,12 +662,14 @@ ImgSect_t * CreateJpegSection(int SectionType, unsigned char * Data, int Size)
 void CreateMinimalJpegExif(void)
 {
     char Buffer[256];
+    int len;
+    unsigned char * NewBuf;
     memcpy(Buffer+2, "Exif\0\0",6);
-    
-    int len = CreateMinimalExif(Buffer+8); /* create the actual Exif structure */
+
+    len = CreateMinimalExif(Buffer+8); /* create the actual Exif structure */
 
     /* reprocess the new minimal exif header to make sure data is up to date. */
-    process_EXIF(Buffer+8, len);
+    process_EXIF((unsigned char *)(Buffer+8), len);
 
     len += 8; /* For the length bytes and 'Exif\0\0' */
 
@@ -674,10 +678,10 @@ void CreateMinimalJpegExif(void)
 
     /* Remove old exif section, if there was one. */
     RemoveJpegSectionByType(M_EXIF);
-    
+
     /* Sections need malloced buffers, so do that now, especially because */
     /* we now know how big it needs to be allocated. */
-    unsigned char * NewBuf = malloc(len);
+    NewBuf = malloc(len);
     if (NewBuf == NULL){
         ErrFatal("Could not allocate memory");
     }
@@ -696,14 +700,16 @@ void CreateMinimalJpegExif(void)
 /*-------------------------------------------------------------------------- */
 void SetJpegCommentTo(char * NewCommentStr)
 {
+    ImgSect_t * CommentSec;
+    int CommentSize;
+    int size;
     if (NewCommentStr == NULL){
         /* Actually want to remove comment section. */
         RemoveJpegSectionByType(M_COM);
         return;
     }
 
-    ImgSect_t * CommentSec;
-    int CommentSize = strlen(NewCommentStr);
+    CommentSize = strlen(NewCommentStr);
     CommentSec = FindImgSection(M_COM);
 
     if (CommentSec){
@@ -713,7 +719,6 @@ void SetJpegCommentTo(char * NewCommentStr)
         CommentSec = CreateImgSection(M_COM, NULL,2);
     }
     /* Discard old comment section and put a new one in. */
-    int size;
     size = CommentSize+2;
     CommentSec->Size = size;
     CommentSec->Data = malloc(size);

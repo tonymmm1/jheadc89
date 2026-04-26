@@ -82,13 +82,17 @@ int ReadWebpSections(FILE * infile, ReadMode_t ReadMode) {
 
     while (!feof(infile)) {
         uchar RawHeader[8];
+        unsigned int ChunkLen;
+        int ChunkType;
+        unsigned int ReadLen;
+        uchar * Data;
         if (fread(RawHeader, 1, 8, infile) != 8) break;
 
-        unsigned int ChunkLen = Get32webp(RawHeader + 4);
+        ChunkLen = Get32webp(RawHeader + 4);
 
         if ((int)ChunkLen <=0) continue; /* Corrupt crap in a fuzz test, ignore. */
 
-        int ChunkType = (RawHeader[0] << 24) | (RawHeader[1] << 16) | (RawHeader[2] << 8) | RawHeader[3];
+        ChunkType = (RawHeader[0] << 24) | (RawHeader[1] << 16) | (RawHeader[2] << 8) | RawHeader[3];
         if (ShowTags){
             printf("Chunk type %x '",ChunkType);
             { int a; for (a=0;a<4;a++) putchar((char)(ChunkType>>((3-a)*8))); }
@@ -96,9 +100,9 @@ int ReadWebpSections(FILE * infile, ReadMode_t ReadMode) {
         }
 
         /* WebP chunks are padded to even bytes */
-        unsigned int ReadLen = (ChunkLen + 1) & ~1;
+        ReadLen = (ChunkLen + 1) & ~1;
 
-        uchar * Data = (uchar *)malloc(ReadLen);
+        Data = (uchar *)malloc(ReadLen);
         if (fread(Data, 1, ReadLen, infile) != ReadLen) {
             free(Data);
             break;
@@ -240,6 +244,7 @@ static void EnsureVP8XHeaderExists(void)
         WebpSections[0].Size = 10;
         WebpSections[0].Data = Data;
 
+        {
         /* Set dimensions (Width-1 and Height-1) */
         unsigned int w = ImageInfo.Width - 1;
         unsigned int h = ImageInfo.Height - 1;
@@ -249,6 +254,7 @@ static void EnsureVP8XHeaderExists(void)
         Data[7] = (uchar)(h & 0xFF);
         Data[8] = (uchar)((h >> 8) & 0xFF);
         Data[9] = (uchar)((h >> 16) & 0xFF);
+        }
 
     }
 }
@@ -312,18 +318,19 @@ uchar * ChangeWebpExifSectionLength(int NewLength)
 void CreateMinimalWebpExif(void)
 {
     unsigned char ExifData[256];
-    memset(ExifData, 0, sizeof(ExifData));
     unsigned int ExifLen;
+    unsigned char * WebpExifData;
+    memset(ExifData, 0, sizeof(ExifData));
 
     /* Create the minimal Exif header */
-    ExifLen = CreateMinimalExif(ExifData);
+    ExifLen = CreateMinimalExif((char *)ExifData);
     ExifLen = (ExifLen+1) & 0xfffe; /* Round to even length */
 
     /* reprocess the new minimal exif header to make sure data is up to date. */
     process_EXIF(ExifData, ExifLen);
 
     /* WebP EXIF chunks contain the raw TIFF data. */
-    unsigned char * WebpExifData = malloc(ExifLen);
+    WebpExifData = malloc(ExifLen);
     if (WebpExifData == NULL) ErrFatal("Out of memory");
     memcpy(WebpExifData, ExifData, ExifLen);
 
@@ -339,6 +346,8 @@ void CreateMinimalWebpExif(void)
 /*-------------------------------------------------------------------------- */
 void SetWebpCommentTo(char * NewCommentStr)
 {
+    int CommentLen;
+    unsigned char * Data;
     /* Remove any existing 'COMM' chunk to avoid duplicates. */
     RemoveWebpSectionByType(0x434f4d4d); /* "COMM" */
 
@@ -347,10 +356,10 @@ void SetWebpCommentTo(char * NewCommentStr)
         return;
     }
 
-    int CommentLen = (int)strlen(NewCommentStr);
+    CommentLen = (int)strlen(NewCommentStr);
     CommentLen = (CommentLen+1) & 0xfffe; /* Round up to even length */
 
-    unsigned char * Data = (unsigned char *)malloc(CommentLen);
+    Data = (unsigned char *)malloc(CommentLen);
     if (Data == NULL) ErrFatal("Out of memory");
     memcpy(Data, NewCommentStr, CommentLen);
 
@@ -366,6 +375,10 @@ void SetWebpCommentTo(char * NewCommentStr)
 /* Write modified file back out (after exif or comment changes) */
 /*-------------------------------------------------------------------------- */
 void WriteWebpFile(const char * FileName) {
+    FILE * outfile;
+    unsigned int TotalSize;
+    int i;
+    uchar SizeBuf[4];
 
     /* If we only have VP8X and ONE image chunk and no flags are set, */
     /* delete VP8X to make it a "Simple" WebP. */
@@ -387,13 +400,11 @@ void WriteWebpFile(const char * FileName) {
         WebpSections[0].Data[0] = Flags;
     }
 
-    FILE * outfile = fopen(FileName, "wb");
+    outfile = fopen(FileName, "wb");
     if (!outfile) ErrFatal("Could not open WebP for write");
 
     /* Calculate total RIFF size */
-    unsigned int TotalSize = 4; /* "WEBP" */
-    int i;
-    uchar SizeBuf[4];
+    TotalSize = 4; /* "WEBP" */
     for (i = 0; i < WebpSectionsRead; i++) {
         TotalSize += 8 + ((WebpSections[i].Size + 1) & ~1);
     }

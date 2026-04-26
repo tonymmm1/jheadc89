@@ -11,6 +11,10 @@ if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wdeclaration-after-statement)
 endif()
 
+if (NOT WIN32)
+    add_compile_definitions(_POSIX_C_SOURCE=200809L)
+endif()
+
 if (WIN32 AND BUILD_SHARED_LIBS)
 	set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()

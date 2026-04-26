@@ -1215,10 +1215,12 @@ int CreateMinimalExif(char * Buffer)
 /*-------------------------------------------------------------------------- */
 int ExifBytesActuallyUsed(uchar * ExifData, unsigned Size)
 {
+    int NewSize;
+    int ThumbnailEndIndex;
     if (!ImageInfo.ThumbnailAtEnd) return Size;
-    
-    int NewSize = Size;
-    int ThumbnailEndIndex = ImageInfo.ThumbnailOffset+ImageInfo.ThumbnailSize;
+
+    NewSize = Size;
+    ThumbnailEndIndex = ImageInfo.ThumbnailOffset+ImageInfo.ThumbnailSize;
     for(;;NewSize--){
         /* Only trim trailing zeros. */
         if (ExifData[NewSize-1]) break;

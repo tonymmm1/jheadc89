@@ -28,7 +28,7 @@ void ProcessImgComment (const uchar * Data, int length)
     memset(ImageInfo.Comments, 0, sizeof(ImageInfo.Comments));
 
     if (length > sizeof(ImageInfo.Comments)-1) length = sizeof(ImageInfo.Comments)-1;
-    strncpy(ImageInfo.Comments,Data, length);
+    strncpy(ImageInfo.Comments,(const char *)Data, length);
 
     if (ShowTags){
         char * type = "??";
@@ -47,15 +47,17 @@ void ProcessImgComment (const uchar * Data, int length)
 /*-------------------------------------------------------------------------- */
 int ReadImgFile(const char * FileName, ReadMode_t ReadMode) {
     unsigned char Sig[12];
-    FILE * f = fopen(FileName, "rb");
-    int retval;
+    FILE * f;
+    int retval = FALSE;
+    int read;
 
+    f = fopen(FileName, "rb");
     if (!f) {
         fprintf(stderr, "can't open '%s'\n", FileName);
         return FALSE;
     }
 
-    int read = fread(Sig, 1, 12, f);
+    read = fread(Sig, 1, 12, f);
     if (read < 12){
         /* Too small to contain an image. */
         fclose(f);
@@ -99,6 +101,7 @@ int RemoveMetadataImgSections(void)
     }else if (ImageInfo.ImgTypeLoaded == IMG_TYPE_WEBP){
         return RemoveMetadataWebpSections();
     }
+    return FALSE;
 }
 
 /*-------------------------------------------------------------------------- */
@@ -195,6 +198,8 @@ int ReplaceImgThumbnail(const char * ThumbFileName)
     FILE * ThumbnailFile;
     int ThumbLen;
     uchar * ThumbnailPointer;
+    unsigned char * ExifSection;
+    int nread;
 
     if (ImageInfo.ThumbnailOffset == 0 || ImageInfo.ThumbnailAtEnd == FALSE){
         if (ThumbFileName == NULL){
@@ -235,13 +240,12 @@ int ReplaceImgThumbnail(const char * ThumbFileName)
         ThumbnailFile = NULL;
     }
 
-    unsigned char * ExifSection;
     ExifSection = ChangeExifSectionLength(ImageInfo.ThumbnailOffset+ThumbLen);
 
     ThumbnailPointer = ExifSection+ImageInfo.ThumbnailOffset;
 
     if (ThumbnailFile){
-        int nread = fread(ThumbnailPointer, 1, ThumbLen, ThumbnailFile);
+        nread = fread(ThumbnailPointer, 1, ThumbLen, ThumbnailFile);
         if (nread != ThumbLen){
             goto noread;
         }
@@ -264,10 +268,11 @@ int TrimImgExifTrailingZeros()
 {
     unsigned Size;
     uchar * ExifData;
+    unsigned NewSize;
     ExifData = GetImgExifSectionData(&Size);
     if (!ExifData) return FALSE;
 
-    unsigned NewSize = ExifBytesActuallyUsed(ExifData, Size);
+    NewSize = ExifBytesActuallyUsed(ExifData, Size);
     if (NewSize < Size){
         ImgSect_t * ExSec;
         if (ImageInfo.ImgTypeLoaded == IMG_TYPE_JPEG){
@@ -473,6 +478,7 @@ void DoFileRenaming(const char * FileName, char * strftime_args)
         char NewName[PATH_MAX*2+10];
         char NameExtra[3];
         struct stat dummy;
+        char * FileNameExt;
 
         if (a){
             /* Generate a suffix for the file name if previous choice of names is taken. */
@@ -490,7 +496,7 @@ void DoFileRenaming(const char * FileName, char * strftime_args)
             NameExtra[0] = 0;
         }
 
-        char * FileNameExt = "jpg";
+        FileNameExt = "jpg";
         if (ImageInfo.ImgTypeLoaded == IMG_TYPE_PNG) FileNameExt = "png";
         if (ImageInfo.ImgTypeLoaded == IMG_TYPE_WEBP) FileNameExt = "webp";
 

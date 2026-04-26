@@ -137,16 +137,17 @@ void CreateMinimalPngExif(void)
 {
     unsigned char ExifData[256];
     unsigned int ExifLen;
+    unsigned char * PngExifData;
 
     /* Create the minimal Exif header using existing exif.c logic. */
-    ExifLen = CreateMinimalExif(ExifData);
+    ExifLen = CreateMinimalExif((char *)ExifData);
 
     /* reprocess the new minimal exif header to make sure data is up to date. */
     process_EXIF(ExifData, ExifLen);
 
     /* PNG eXIf chunks start directly at the TIFF header (II* or MM*). */
     /* So we skip the first 6 bytes ("Exif\0\0"). */
-    unsigned char * PngExifData = malloc(ExifLen);
+    PngExifData = malloc(ExifLen);
     memcpy(PngExifData, ExifData, ExifLen);
 
     RemovePngSectionByType(0x65584966); /* 'eXIf' section */
@@ -161,28 +162,35 @@ void CreateMinimalPngExif(void)
 int ReadPngSections(FILE * infile, ReadMode_t ReadMode)
 {
     uchar Sig[8];
+    int HaveCom;
     if (fread(Sig, 1, 8, infile) != 8 || memcmp(Sig, "\x89PNG\r\n\x1a\n", 8) != 0) return FALSE;
 
     ResetPngFile();
-    int HaveCom = FALSE;
+    HaveCom = FALSE;
 
     for (;;) {
         uchar LenRaw[4], TypeRaw[4], CrcRaw[4];
+        unsigned int ChunkLen;
+        int ChunkTypeInt;
+        uchar * Data;
+        unsigned int StoredCrc;
+        unsigned int c;
+        unsigned int ComputedCrc;
         if (fread(LenRaw, 1, 4, infile) != 4 || fread(TypeRaw, 1, 4, infile) != 4) break;
 
-        unsigned int ChunkLen = Get32png(LenRaw);
+        ChunkLen = Get32png(LenRaw);
         if (ChunkLen > 1<<31){
             ErrFatal("bad PNG chunk length");
             return FALSE;
         }
-        int ChunkTypeInt = (TypeRaw[0] << 24) | (TypeRaw[1] << 16) | (TypeRaw[2] << 8) | TypeRaw[3];
+        ChunkTypeInt = (TypeRaw[0] << 24) | (TypeRaw[1] << 16) | (TypeRaw[2] << 8) | TypeRaw[3];
 
         if (ShowTags){
             printf("PNG Chunk type '%.4s' 0x%08x length %d\n", TypeRaw, ChunkTypeInt, ChunkLen);
         }
 
         CheckPngSectionsAllocated();
-        uchar * Data = (uchar *)malloc(ChunkLen + 20);
+        Data = (uchar *)malloc(ChunkLen + 20);
         if (Data == NULL) ErrFatal("Out of memory");
 
         if (fread(Data, 1, ChunkLen, infile) != ChunkLen) {
@@ -196,13 +204,13 @@ int ReadPngSections(FILE * infile, ReadMode_t ReadMode)
             free(Data);
             break;
         }
-        unsigned int StoredCrc = Get32png(CrcRaw); /* PNG integers are Big-Endian */
+        StoredCrc = Get32png(CrcRaw); /* PNG integers are Big-Endian */
 
         /* Calculate the CRC over Type + Data */
-        unsigned int c = 0xffffffffL; /* Start value for CRC-32 */
+        c = 0xffffffffL; /* Start value for CRC-32 */
         c = UpdateCrc(c, TypeRaw, 4); /* Include the 4-byte Type */
         c = UpdateCrc(c, Data, ChunkLen); /* Include the Data payload */
-        unsigned int ComputedCrc = c ^ 0xffffffffL; /* Final XOR */
+        ComputedCrc = c ^ 0xffffffffL; /* Final XOR */
 
         if (StoredCrc != ComputedCrc){
             ErrFatal("PNG CRC corrupt");
@@ -221,10 +229,11 @@ int ReadPngSections(FILE * infile, ReadMode_t ReadMode)
         }
 
         if (memcmp(TypeRaw, "IHDR", 4) == 0) {
+            int color_type;
             ImageInfo.Width = Get32png(Data);
             ImageInfo.Height = Get32png(Data + 4);
             ImageInfo.IsColor = TRUE;
-            int color_type = Data[9];
+            color_type = Data[9];
             switch (color_type) {
                 case 0: /* Grayscale */
                 case 4:
@@ -368,6 +377,9 @@ void SetPngCommentTo(char * NewCommentStr)
 {
     ImgSect_t * CommentSec = NULL;
     int a;
+    int CommentLen;
+    int KeyLen;
+    int TotalSize;
 
     /* Look for an existing tEXt chunk that starts with "Description" */
     for (a=0; a<PngSectionsRead; a++) {
@@ -388,9 +400,9 @@ void SetPngCommentTo(char * NewCommentStr)
     }
 
     /* Prepare the data: "Comment\0CommentText" */
-    int CommentLen = strlen(NewCommentStr);
-    int KeyLen = 8; /* "Comment" + null terminator */
-    int TotalSize = KeyLen + CommentLen;
+    CommentLen = strlen(NewCommentStr);
+    KeyLen = 8; /* "Comment" + null terminator */
+    TotalSize = KeyLen + CommentLen;
 
     if (CommentSec) {
         free(CommentSec->Data);
